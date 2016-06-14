@@ -81,12 +81,12 @@ function islandora_basic_collection_menu() {
     ),
     'islandora/object/%islandora_object/manage/removeAsParent/%islandora_object' => array(
       'title' => 'Remove this parent Object',
-      'page callback' => 'islandora_basic_collection_remove_from_collection_wrapper',
-      'page arguments' => array(2, 5), 
-     'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_basic_collection_remove_from_collection_wrapper', 2, 5),
+      'type' => MENU_CALLBACK,
       'file' => 'includes/utilities.inc',
       'access arguments' => array(ISLANDORA_BASIC_COLLECTION_REMOVE_FROM_COLLECTION),
-    ),     
+    ),
   );
 }
 

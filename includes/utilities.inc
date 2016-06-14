@@ -268,7 +268,34 @@ function islandora_basic_collection_append_fragment_to_pager_url($pager, $fragme
  * @param AbstractObject $collection
  * 
  */
-function islandora_basic_collection_remove_from_collection_wrapper(AbstractObject $member, AbstractObject $collection) {
+function islandora_basic_collection_remove_from_collection_wrapper($form, &$form_state, AbstractObject $member, AbstractObject $collection) {
+  $form = array(
+    'collection_id' => array(
+      '#type' => 'value',
+      '#value' => $collection->id,
+    ),
+    'object_id' => array(
+      '#type' => 'value',
+      '#value' => $member->id,
+    ),
+  );
+
+  return confirm_form(
+    $form,
+    t('Are you sure you want to remove the object "@object" from "@collection"?', array('@object' => $member->id, '@collection' => $collection->id)),
+    "islandora/object/{$member->id}/manage/",
+    t('This action cannot be undone.'),
+    t('Delete'),
+    t('Cancel')
+  );
+}
+
+/**
+ * Implements submit handler for islandora_basic_collection_remove_from_collection_wrapper confirmation form.
+ */
+function islandora_basic_collection_remove_from_collection_wrapper_submit($form, &$form_state) {
+  $member = islandora_object_load($form_state['values']['object_id']);
+  $collection = islandora_object_load($form_state['values']['collection_id']);
   islandora_basic_collection_remove_from_collection($member, $collection);
   // check to see that the object was removed from the collection -- set the message and redirect 
   $results = $member->relationships->get(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection->id);
