@@ -186,6 +186,26 @@ function islandora_basic_collection_add_to_collection(AbstractObject $new_member
   if (empty($results)) {
     $new_member->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection->id);
   }
+  // Now, we may need to add reference/s to the Site/s of the collection to the $new_member's relationships.
+  if (is_object($collection) && is_object($new_member)) {
+    $collection_sites_rel = $collection->relationships->get(NULL, 'isMemberOfSite');
+    $new_member_sites_rel = $new_member->relationships->get(NULL, 'isMemberOfSite');
+    $add_relationship_to_collection_sites = $new_member_sites = array();
+    foreach ($new_member_sites_rel as $tar) {
+      if (isset($tar['object']['value'])) {
+        $new_member_sites[] = 'info:fedora/' . $tar['object']['value'];
+      }
+    }
+    foreach ($collection_sites_rel as $c) {
+      if (isset($c['object']['value'])) {
+        $site = 'info:fedora/' . $c['object']['value'];
+        if (array_search($site, $new_member_sites) === FALSE) {
+          $add_relationship_to_collection_sites[] = $site;
+          $new_member->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfSite', $site);
+        }
+      }
+    }
+  }
 }
 
 /**
