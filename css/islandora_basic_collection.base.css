@@ -47,3 +47,9 @@
 .islandora-basic-collection-display-switch {
   float: right;
 }
+
+.big_warning {
+  font-size: larger;
+  color: red;
+  font-weight: bold;
+}

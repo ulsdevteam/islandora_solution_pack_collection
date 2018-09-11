@@ -94,7 +94,7 @@ function islandora_basic_collection_get_namespace_form_element($default_value) {
 function islandora_basic_collection_get_children_select_table_form_element(AbstractObject $object, array $pager_options) {
   // Assumes all results are returned although the function description
   // states otherwise.
-  $limit = variable_get('islandora_basic_collection_admin_page_size', 10);
+  $limit = 100;
   $page = pager_find_page($pager_options['element']);
   list($count, $results) = islandora_basic_collection_get_member_objects($object, $page, $limit, 'manage');
   $page = pager_default_initialize($count, $limit, $pager_options['element']);
@@ -103,11 +103,18 @@ function islandora_basic_collection_get_children_select_table_form_element(Abstr
     $pid = $result['object']['value'];
     $label = empty($result['title']['value']) ? t('Untitled') : filter_xss($result['title']['value']);
     $owner = empty($result['owner']['value']) ? t('Unowned') : filter_xss($result['owner']['value']);
+    $source = empty($result['source']['value']) ? t('Unowned') : filter_xss($result['source']['value']);
+
     $date_modified = empty($result['date_modified']['value']) ? t('Unknown') : filter_xss($result['date_modified']['value']);
     $rows[$pid] = array(
       'owner' => array(
         'data' => array(
           '#markup' => '<div>' . $owner . '</div>',
+        ),
+      ),
+      'source' => array(
+        'data' => array(
+          '#markup' => '<div>' . $source . '</div>',
         ),
       ),
       'date_modified' => array(
@@ -121,13 +128,14 @@ function islandora_basic_collection_get_children_select_table_form_element(Abstr
           '#title' => $label,
           '#href' => "islandora/object/{$pid}")));
   }
-  $pager = theme('pager', array('quantity' => $limit, 'element' => $pager_options['element']));
+  $pager = theme('pager', array('quantity' => 100, 'element' => $pager_options['element']));
   $pager = islandora_basic_collection_append_fragment_to_pager_url($pager, $pager_options['fragment']);
   return array(
     '#type' => 'tableselect',
     '#header' => array(
       'label' => array('data' => t('Label')),
       'owner' => array('data' => t('Owner')),
+      'source' => array('data' => t('Source')),
       'date_modified' => array('data' => t('Date Modified'))),
     '#options' => $rows,
     '#empty' => t('Collection is empty.'),
@@ -185,26 +193,6 @@ function islandora_basic_collection_add_to_collection(AbstractObject $new_member
   $results = $new_member->relationships->get(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection->id);
   if (empty($results)) {
     $new_member->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection->id);
-  }
-  // Now, we may need to add reference/s to the Site/s of the collection to the $new_member's relationships.
-  if (is_object($collection) && is_object($new_member)) {
-    $collection_sites_rel = $collection->relationships->get(NULL, 'isMemberOfSite');
-    $new_member_sites_rel = $new_member->relationships->get(NULL, 'isMemberOfSite');
-    $add_relationship_to_collection_sites = $new_member_sites = array();
-    foreach ($new_member_sites_rel as $tar) {
-      if (isset($tar['object']['value'])) {
-        $new_member_sites[] = 'info:fedora/' . $tar['object']['value'];
-      }
-    }
-    foreach ($collection_sites_rel as $c) {
-      if (isset($c['object']['value'])) {
-        $site = 'info:fedora/' . $c['object']['value'];
-        if (array_search($site, $new_member_sites) === FALSE) {
-          $add_relationship_to_collection_sites[] = $site;
-          $new_member->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfSite', $site);
-        }
-      }
-    }
   }
 }
 
@@ -278,52 +266,3 @@ function islandora_basic_collection_append_fragment_to_pager_url($pager, $fragme
   $pager = preg_replace($pattern, $replace, $pager);
   return $pager;
 }
-
-/**
- * Wrapper function to call islandora_basic_collection_remove_from_collection() and then 
- * redirect to the islandora/object/%islandora_object/manage page.
- * see islandora_basic_collection_remove_from_collection for details on parameters
- * 
- * @param AbstractObject $member
- * @param AbstractObject $collection
- * 
- */
-function islandora_basic_collection_remove_from_collection_wrapper($form, &$form_state, AbstractObject $member, AbstractObject $collection) {
-  $form = array(
-    'collection_id' => array(
-      '#type' => 'value',
-      '#value' => $collection->id,
-    ),
-    'object_id' => array(
-      '#type' => 'value',
-      '#value' => $member->id,
-    ),
-  );
-
-  return confirm_form(
-    $form,
-    t('Are you sure you want to remove the object "@object" from "@collection"?', array('@object' => $member->id, '@collection' => $collection->id)),
-    "islandora/object/{$member->id}/manage/",
-    t('This action cannot be undone.'),
-    t('Delete'),
-    t('Cancel')
-  );
-}
-
-/**
- * Implements submit handler for islandora_basic_collection_remove_from_collection_wrapper confirmation form.
- */
-function islandora_basic_collection_remove_from_collection_wrapper_submit($form, &$form_state) {
-  $member = islandora_object_load($form_state['values']['object_id']);
-  $collection = islandora_object_load($form_state['values']['collection_id']);
-  islandora_basic_collection_remove_from_collection($member, $collection);
-  // check to see that the object was removed from the collection -- set the message and redirect 
-  $results = $member->relationships->get(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection->id);
-  if (empty($results)) {
-    drupal_set_message("'".$member->id.t("' has been removed from '").$collection->id."'.");
-  } else {
-    drupal_set_message(t("There was a problem removing '".$member->id.t("' from '").$collection->id."'."));
-  }
-  drupal_goto("islandora/object/{$member->id}/manage");
-}
-

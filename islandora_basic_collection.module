@@ -519,7 +519,7 @@ function islandora_basic_collection_get_query_info(array $params, $type = 'view'
   $params += array(
     'page_number' => 0,
     'page_size' => 10,
-    'vars' => '?object ?title ?owner ?date_modified',
+    'vars' => '?object ?title ?owner ?source ?date_modified',
     'order_by' => '?title',
     'model' => '?model',
     'context' => $type,
@@ -625,6 +625,8 @@ function islandora_basic_collection_islandora_basic_collection_get_query_filters
  *   or boolean FALSE if the query fails.
  */
 function islandora_basic_collection_get_member_objects(AbstractObject $object, $page_number = 0, $page_size = 20, $type = 'view', $cmodel = NULL) {
+  module_load_include('inc', 'upitt_islandora_solr_search_extras', 'includes/utilities');
+
   $params = array(
     'object' => $object,
     'page_number' => $page_number,
@@ -664,6 +666,14 @@ function islandora_basic_collection_get_member_objects(AbstractObject $object, $
     }
 
     $results = $object->repository->ri->query($query_array['query'], $query_array['type']);
+
+    // BGG - adding source field value to results the hard way
+    // _get_solr_field_value_special($islandora_object, $field, $single_result = TRUE, $pid = '')
+    foreach ($results as $k => $result) {
+      $pid = $result['object']['value'];
+      $source = _get_solr_field_value_special(NULL, 'mods_relatedItem_host_titleInfo_title_ms', TRUE, $pid); //dc.source', TRUE, $pid);
+      $results[$k]['source']['value'] = $source;
+    }
   }
   catch (Exception $e) {
     $variables = array(
@@ -766,7 +776,7 @@ function islandora_basic_collection_form_islandora_object_properties_form_alter(
 function islandora_basic_collection_form_islandora_delete_object_form_alter(array &$form, array &$form_state) {
   $object = $form_state['object'];
   if (in_array('islandora:collectionCModel', $object->models)) {
-    $form['description']['#markup'] = t('This will remove the collection object and all its child objects. If child objects are collection objects, their children will not be deleted, and will become orphaned. Child objects currently shared with other collections will not be deleted. This action cannot be undone.');
+    $form['description']['#markup'] = t('<div class="big_warning">This will remove the collection object and all its child objects. If child objects are collection objects, their children will not be deleted, and will become orphaned. Child objects currently shared with other collections will not be deleted. This action cannot be undone.</div>');
     $form['#submit'] = array('islandora_basic_collection_islandora_delete_object_form_delete_children_submit');
   }
 }
