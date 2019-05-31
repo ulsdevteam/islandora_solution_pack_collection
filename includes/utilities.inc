@@ -94,7 +94,7 @@ function islandora_basic_collection_get_namespace_form_element($default_value) {
 function islandora_basic_collection_get_children_select_table_form_element(AbstractObject $object, array $pager_options) {
   // Assumes all results are returned although the function description
   // states otherwise.
-  $limit = variable_get('islandora_basic_collection_admin_page_size', 10);
+  $limit = 100;
   $page = pager_find_page($pager_options['element']);
   list($count, $results) = islandora_basic_collection_get_member_objects($object, $page, $limit, 'manage');
   $page = pager_default_initialize($count, $limit, $pager_options['element']);
@@ -104,11 +104,18 @@ function islandora_basic_collection_get_children_select_table_form_element(Abstr
     $label = empty($result['title']['value']) ? t('Untitled') : filter_xss($result['title']['value']);
     $label = $label . " (" . $pid . ")";
     $owner = empty($result['owner']['value']) ? t('Unowned') : filter_xss($result['owner']['value']);
+    $source = empty($result['source']['value']) ? t('Unowned') : filter_xss($result['source']['value']);
+
     $date_modified = empty($result['date_modified']['value']) ? t('Unknown') : filter_xss($result['date_modified']['value']);
     $rows[$pid] = array(
       'owner' => array(
         'data' => array(
           '#markup' => '<div>' . $owner . '</div>',
+        ),
+      ),
+      'source' => array(
+        'data' => array(
+          '#markup' => '<div>' . $source . '</div>',
         ),
       ),
       'date_modified' => array(
@@ -122,13 +129,14 @@ function islandora_basic_collection_get_children_select_table_form_element(Abstr
           '#title' => $label,
           '#href' => "islandora/object/{$pid}")));
   }
-  $pager = theme('pager', array('quantity' => $limit, 'element' => $pager_options['element']));
+  $pager = theme('pager', array('quantity' => 100, 'element' => $pager_options['element']));
   $pager = islandora_basic_collection_append_fragment_to_pager_url($pager, $pager_options['fragment']);
   return array(
     '#type' => 'tableselect',
     '#header' => array(
       'label' => array('data' => t('Label')),
       'owner' => array('data' => t('Owner')),
+      'source' => array('data' => t('Source')),
       'date_modified' => array('data' => t('Date Modified'))),
     '#options' => $rows,
     '#empty' => t('Collection is empty.'),
